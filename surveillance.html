@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Surveillance</title>
+
+    <meta charset="UTF-8">
+
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
+    <link rel="stylesheet" type="text/css" href="css/dc.css"/>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<style>
+    body {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-weight: 200;
+        font-size: 16px;
+    }
+
+    .dc-chart {
+        margin-bottom: 20px;
+        float: none;
+    }
+
+    .dc-chart g.row text {
+        fill: black;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-weight: 200;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+    .dc-chart path {
+        stroke-width: 1;
+        stroke: #fff;
+    }
+
+    .dc-chart .selected path {
+        stroke-width: 1;
+        stroke: #fff;
+        fill-opacity: 1;
+    }
+
+    .dc-chart .deselected path {
+        stroke-width: 1;
+        stroke: #fff;
+    }
+
+    .reset {
+        padding-left: 1em;
+        font-weight: 200;
+        color: #aaa;
+    }
+
+    .reset-all {
+        color: #aaa;
+    }
+
+    .axis path, .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+    }
+
+    .axis text {
+        font: 18px;
+    }
+
+    .title {
+        font-weight: 100;
+        font-size: 18px;
+    }
+
+    .subtitle {
+        font-weight: 200;
+        font-size: 16px;
+    }
+    .brush rect.extent {
+        fill: steelblue;
+        fill-opacity: .125;
+    }
+
+    .brush .resize path {
+        fill: #eee;
+        stroke: #666;
+    }
+
+    #time-chart .bar {
+        fill: LightSlateGray;
+    }
+
+    .legend {
+        background-color: #fff;
+        width: 120px;
+        height: 300px;
+        /*border: 1px solid #bbb;*/
+        margin: 10px;
+    }
+
+    .legend .colorlegend-labels {
+        font-size: 12px;
+        fill: black;
+    }
+
+</style>
+<body>
+
+<div class="container">
+    <div id="header" class="row title">
+        Influenza host surveillance
+        <!--
+        <div class="hint">use the menu to change the species</div>
+        <div><select>
+            <optgroup label="Host species">
+                <option value="all">All</option>
+                <option value="chicken">Chicken</option>
+                <option value="duck">Duck</option>
+                <option value="swine">Swine</option>
+            </optgroup>
+        </select></div>
+        -->
+        <!--
+        <button id="all-button" type="button" class="btn btn-primary btn-xs active">All animals</button>
+        <button id="chicken-button" type="button" class="btn btn-primary btn-xs">Chickens</button>
+        <button id="duck-button" type="button" class="btn btn-primary btn-xs">Ducks</button>
+        <button id="swine-button" type="button" class="btn btn-primary btn-xs">Swine</button>
+        -->
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <span class="subtitle">Livestock distribution</span>
+        <a class="reset subtitle" href="javascript:surveillance.abundanceMap.filterAll();dc.renderAll();"
+           style="display: none;">reset</a>
+        </div>
+        <div id="abundanceMap" class="col-md-8"></div>
+        <div id="abundanceLegend" class="legend col-md-2"></div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <span class="subtitle">Sequenced strains</span>
+            <a class="reset subtitle" href="javascript:surveillance.sequenceMap.filterAll();dc.renderAll();"
+               style="display: none;">reset</a>
+        </div>
+        <div id="sequenceMap" class="col-md-8"></div>
+        <div id="sequenceLegend" class="legend col-md-2"></div>
+    </div>
+    <!--
+    <div class="row">
+        <div id="host-chart" class="col-md-4">
+                <span class="title">Surveillance by host</span>
+                <a class="reset" href="javascript:surveillance.hostChart.filterAll();dc.renderAll();"
+                   style="display: none;">reset</a>
+        </div>
+        <div id="time-chart" class="col-md-8">
+                <span class="title">Surveillance by sequencing</span>
+                <a class="reset" href="javascript:surveillance.timeChart.filterAll();dc.renderAll();"
+                   style="display: none;">reset</a>
+        </div>
+    </div>
+    -->
+
+    <div class="row">
+        <div class="col-md-12">
+            <span class="subtitle">Sequencing under/over-sampling</span>
+        <a class="reset subtitle" href="javascript:surveillance.coverageMap.filterAll();dc.renderAll();"
+           style="display: none;">reset</a>
+    </div>
+        <div id="coverageMap" class="col-md-8"></div>
+        <div id="coverageLegend" class="legend col-md-2"></div>
+    </div>
+    <!--
+    <div class="row">
+        <div class="col-md-12">
+                <button class="btn btn-success" id="save_as_svg" value="">Save as SVG</button>
+            </div>
+    </div>
+    -->
+    <div class="row">
+        <div class="col-md-12">
+			<span class="reset" style="display: none;"> | Current filter: <span class="filter"></span>
+			<a href="javascript:dc.filterAll(); dc.renderAll();">Reset All</a></span>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="javascript/jquery-2.0.2.js"></script>
+<script type="text/javascript" src="javascript/d3.v3.min.js"></script>
+<script type="text/javascript" src="javascript/d3.geo.projection.v0.min.js"></script>
+<script type="text/javascript" src="javascript/colorlegend.js"></script>
+<script type="text/javascript" src="javascript/colorbrewer.js"></script>
+<script type="text/javascript" src="javascript/crossfilter.min.js"></script>
+<script type="text/javascript" src="javascript/dc.min.js"></script>
+<script type="text/javascript" src="javascript/queue.min.js"></script>
+<script type="text/javascript" src="javascript/utils.js"></script>
+<script type="text/javascript" src="surveillance.js"></script>
+<script>
+    parameters = getUrlVars();
+
+    var host = 'all';
+
+    if (parameters.host !== undefined) {
+        host = parameters.host;
+    }
+
+    var surveillance = Surveillance(host);
+
+//    $("#save_as_svg").click(function () {
+//        downloadSVG();
+//    });
+//
+//    d3.select("#all-button").on("click", function () {
+//        d3.select("#all-button").classed('active', true);
+//        d3.select("#chicken-button").classed('active', false);
+//        d3.select("#duck-button").classed('active', false);
+//        d3.select("#swine-button").classed('active', false);
+//        surveillance.setHost("all");
+//    });
+//
+//    d3.select("#chicken-button").on("click", function () {
+//        d3.select("#all-button").classed('active', false);
+//        d3.select("#chicken-button").classed('active', true);
+//        d3.select("#duck-button").classed('active', false);
+//        d3.select("#swine-button").classed('active', false);
+//        surveillance.setHost("chicken");
+//    });
+//
+//    d3.select("#duck-button").on("click", function () {
+//        d3.select("#all-button").classed('active', false);
+//        d3.select("#chicken-button").classed('active', false);
+//        d3.select("#duck-button").classed('active', true);
+//        d3.select("#swine-button").classed('active', false);
+//        surveillance.setHost("duck");
+//    });
+//
+//    d3.select("#swine-button").on("click", function () {
+//        d3.select("#all-button").classed('active', false);
+//        d3.select("#chicken-button").classed('active', false);
+//        d3.select("#duck-button").classed('active', false);
+//        d3.select("#swine-button").classed('active', true);
+//        surveillance.setHost("swine");
+//    });
+//
+//    function downloadSVG() {
+//        // Get the d3js SVG element
+//        var tmp = document.getElementById("coverageMap");
+//        var svg = tmp.getElementsByTagName("svg")[0];
+//        // Extract the data as SVG text string
+//        var svg_xml = (new XMLSerializer).serializeToString(svg);
+//        console.log(svg_xml);
+//    }
+
+</script>
+</body>
+</html>
