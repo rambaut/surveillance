@@ -194,10 +194,10 @@ Surveillance = (function (hostSpecies) {
             d.actual.all = average(d.actual);
 
             d.score = {};
-            d.score.duck = (d.expect.duck > 0 ? (d.expect.duck - d.actual.duck) : NaN);
-            d.score.chicken = (d.expect.chicken > 0 ? (d.expect.chicken - d.actual.chicken) : NaN);
-            d.score.swine = (d.expect.swine > 0 ? (d.expect.swine - d.actual.swine) : NaN);
-            d.score.all = (d.expect.all > 0 ? (d.expect.all - d.actual.all) : NaN);
+            d.score.duck = (!isNaN(d.expect.duck) ? (d.expect.duck - d.actual.duck) : -1000);
+            d.score.chicken = (!isNaN(d.expect.chicken) ? (d.expect.chicken - d.actual.chicken) : -1000);
+            d.score.swine = (!isNaN(d.expect.swine) ? (d.expect.swine - d.actual.swine) : -1000);
+            d.score.all = (!isNaN(d.expect.all) ? (d.expect.all - d.actual.all) : -1000);
 
 //            d.diffDuck = Math.log(d.expDuck) - Math.log(d.actDuck);
 //            d.diffChicken = Math.log(d.expChicken) - Math.log(d.actChicken);
@@ -341,7 +341,8 @@ Surveillance = (function (hostSpecies) {
             return d.name;
         });
         var abundanceGroup = abundance.group().reduceSum(function (d) {
-            return d.abundance[surveillance.species];
+            var value = d.abundance[surveillance.species];
+            return (!isNaN(value) ? value : -1);
         });
 
         var differenceFromExpectation = surveillance.countryFilter.dimension(function (d) {
@@ -352,7 +353,7 @@ Surveillance = (function (hostSpecies) {
         });
 
         var minAbundance = d3.min(countries, function (d) {
-            return d.abundance[surveillance.species]
+            return d.abundance[surveillance.species] > 0 ? d.abundance[surveillance.species] : NaN;
         });
         var maxAbundance = d3.max(countries, function (d) {
             return d.abundance[surveillance.species]
@@ -360,18 +361,24 @@ Surveillance = (function (hostSpecies) {
         console.log("Min abundance: " + minAbundance);
         console.log("Max abundance: " + maxAbundance);
 
-        var minAbundance = 1e-6;
-        var maxAbundance = 1;
-
-
-        var colors = [ '#888' ].concat(colorbrewer.YlGnBu[9]);
-
-        var color2 = d3.scale.quantile()
-            .domain([Math.log(minAbundance), Math.log(maxAbundance)])
+        // these thresholds give negative for missing data, [0, 1E-10] for exactly zero and
+        // then a pseudo logarithmic scale
+        var scheme = colorbrewer.YlGnBu[9];
+        if (surveillance.species === 'chicken') {
+            scheme = colorbrewer.Oranges[9];
+        } else if (surveillance.species === 'duck') {
+            scheme = colorbrewer.Purples[9];
+        } else if (surveillance.species === 'swine') {
+            scheme = colorbrewer.Blues[9];
+        }
+        var colors = [ '#888', '#CCC' ].concat(scheme);
+        var color2 = d3.scale.threshold()
+            .domain([0, 1E-10, 1E-3, 2E-3, 5E-3, 1E-2, 2E-2, 5E-2, 1E-1, 2E-1, 1])
             .range(colors);
 
         var f1 = d3.format("2.1p")
         var f2 = d3.format("2.2p")
+        var f3 = d3.format(",g")
 
         surveillance.abundanceMap.width(width)
             .height(height)
@@ -379,9 +386,6 @@ Surveillance = (function (hostSpecies) {
             .dimension(abundance)
             .group(abundanceGroup)
             .colors(color2)
-            .colorCalculator(function (d) {
-                return isNaN(d) || d == undefined ? '#888' : surveillance.abundanceMap.colors()(Math.log(d));
-            })
             .overlayGeoJson(locationsJson.features, "location", function (d) {
                 return d.properties.admin;
             })
@@ -390,18 +394,24 @@ Surveillance = (function (hostSpecies) {
                 dc.renderAll();
             })
             .title(function (d) {
-                return "Location: " + d.key +
-                    "\rHost species " + surveillance.species +
-                    "\rGlobal proportion " + (!isNaN(d.value) ? f2(d.value) : "n/a" );
-            });
+                var c = countryMap[iso3Map[d.key]];
+                if (c !== undefined) {
+                    return "Location: " + d.key +
+                        "\rChickens: " + (!isNaN(c.chicken) ? f3(c.chicken) + " (" + f2(c.abundance.chicken) + ")" : "n/a") +
+                        "\rDucks: " + (!isNaN(c.duck) ? f3(c.duck) + " (" + f2(c.abundance.duck) + ")" : "n/a") +
+                        "\rSwine: " + (!isNaN(c.swine) ? f3(c.swine) + " (" + f2(c.abundance.swine) + ")" : "n/a") +
+                        "\rGlobal proportion of livestock: " + (!isNaN(c.abundance.all) ? f1(c.abundance.all) : "n/a");
+                } else {
+                    return "Location: " + d.key + "\rLivestock data: n/a"
 
+                }
+            });
 
         colorlegend("#abundanceLegend", color2, "quantile",
             {title: "Proportion of " + (surveillance.species === "all" ? "animals" : surveillance.species),
                 isVertical: true,
                 linearBoxes: 10,
-                labels: ["n/a", ">" + f1(1.0E-5), "", ">" + f1(1.0E-4), "", ">" + f1(1.0E-3), "", ">" + f1(1.0E-2), "", ">" + f1(1.0E-1)]
-//                labels: function(d) { return f(Math.exp(d))}}
+                labels: ["data n/a", "0", f1(1.0E-3), f1(2.0E-3), f1(5.0E-3), f1(1.0E-2), f1(2.0E-2), f1(5.0E-2), f1(1.0E-1), f1(2.0E-1), f1(5.0E-1)]
             });
 
 
@@ -427,13 +437,20 @@ Surveillance = (function (hostSpecies) {
 //            .range(["blue", "blue", "red"])
 //            .interpolate(d3.interpolateLab);
 
-        var colors3 = [ '#888' ].concat(colorbrewer.YlOrRd[9]);
-//        var colors3 = colorbrewer.RdYlGn[9];
-//        var colors3 = colorbrewer.YlOrRd[9];
+//        var colors3 = [ '#888' ].concat(colorbrewer.YlOrRd[9]);
+////        var colors3 = colorbrewer.RdYlGn[9];
+////        var colors3 = colorbrewer.YlOrRd[9];
+//
+//        var color3 = d3.scale.quantile()
+////            .domain([Math.log(minCoverage), Math.log(maxCoverage)])
+//            .domain([NaN, Math.log(minUndersampling), Math.log(maxUndersampling)])
+//            .range(colors3);
 
-        var color3 = d3.scale.quantile()
-//            .domain([Math.log(minCoverage), Math.log(maxCoverage)])
-            .domain([NaN, Math.log(minUndersampling), Math.log(maxUndersampling)])
+        // these thresholds give < -100 for missing data, negative for oversampling [0, 1E-10] for exactly zero and
+        // then a pseudo logarithmic scale for undersampling
+        var colors3 = [ '#888', colorbrewer.Greens[9][4], '#CCC' ].concat(colorbrewer.YlOrRd[9]);
+        var color3 = d3.scale.threshold()
+            .domain([-100, 0, 1E-10, 1E-3, 2E-3, 5E-3, 1E-2, 2E-2, 5E-2, 1E-1, 2E-1])
             .range(colors3);
 
         var f0 = d3.format("2.2r")
@@ -444,9 +461,6 @@ Surveillance = (function (hostSpecies) {
             .dimension(differenceFromExpectation)
             .group(differenceGroup)
             .colors(color3)
-            .colorCalculator(function (d) {
-                return (d < 0 ? colorbrewer.Greens[9][4] : (d == 0 ? colors3[0] : surveillance.coverageMap.colors()(Math.log(d))));
-            })
             .overlayGeoJson(locationsJson.features, "location", function (d) {
                 return d.properties.admin;
             })
@@ -465,10 +479,7 @@ Surveillance = (function (hostSpecies) {
         colorlegend("#coverageLegend", color3, "quantile",
         {title: surveillance.species === 'all' ? "Undersampling" : surveillance.species + " undersampling",
                 isVertical: true,
-                labels: ["n/a", "", ">" + f1(1.0E-4), "", ">" + f1(1.0E-3), "", ">" + f1(1.0E-2), "", ">" + f1(1.0E-1), ""]
-//                labels: function (d) {
-//                    return f0(Math.exp(d))
-//                }
+                labels: ["data n/a", "oversampling", "0", f1(1.0E-3), f1(2.0E-3), f1(5.0E-3), f1(1.0E-2), f1(2.0E-2), f1(5.0E-2), f1(1.0E-1), f1(2.0E-1)]
             });
 
         dc.renderAll();
