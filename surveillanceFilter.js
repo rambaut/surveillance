@@ -5,6 +5,9 @@ Surveillance = (function (hostSpecies) {
 
     surveillance.species = hostSpecies;
 
+//    surveillance.sequenceMap = dc.geoChoroplethChart("#sequenceMap");
+//    surveillance.hostChart = dc.rowChart("#host-chart");
+//    surveillance.timeChart = dc.barChart("#time-chart");
     surveillance.abundanceMap = dc.geoChoroplethChart("#abundanceMap");
     surveillance.sequenceMap = dc.geoChoroplethChart("#sequenceMap");
     surveillance.coverageMap = dc.geoChoroplethChart("#coverageMap");
@@ -43,6 +46,11 @@ Surveillance = (function (hostSpecies) {
             d.duck = parseInt(d.duck);
             d.chicken = parseInt(d.chicken);
             d.swine = parseInt(d.swine);
+
+            // set missing data as zero - to handle later...
+//            d.duck = (isNaN(d.duck) ? 0 : d.duck);
+//            d.chicken = (isNaN(d.chicken) ? 0 : d.chicken);
+//            d.swine = (isNaN(d.swine) ? 0 : d.swine);
 
             countryMap[d.key] = d;
             iso3Map[d.name] = d.key;
@@ -213,6 +221,11 @@ Surveillance = (function (hostSpecies) {
             d.score.poultry = (!isNaN(d.expect.poultry) ? (d.expect.poultry - d.actual.poultry) : -1000);
             d.score.all = (!isNaN(d.expect.all) ? (d.expect.all - d.actual.all) : -1000);
 
+//            d.diffDuck = Math.log(d.expDuck) - Math.log(d.actDuck);
+//            d.diffChicken = Math.log(d.expChicken) - Math.log(d.actChicken);
+//            d.diffSwine = Math.log(d.expSwine) - Math.log(d.actSwine);
+//            d.diff = Math.log(d.exp) - Math.log(d.act);
+
             console.log(d.name +
                 "," + d.chicken + "," + d.duck + "," + d.swine +
                 "," + d.chickenSeq + "," + d.duckSeq + "," + d.swineSeq +
@@ -220,6 +233,27 @@ Surveillance = (function (hostSpecies) {
                 "," + d.sequenceProportion.chicken + "," + d.sequenceProportion.duck + "," + d.sequenceProportion.swine + "," + d.sequenceProportion.all +
                 "," + d.score.chicken + "," + d.score.duck + "," + d.score.swine + "," + d.score.all);
         }
+
+//        surveillance.isolatesCrossfilter = crossfilter(isolates);
+//
+//        var location = surveillance.isolatesCrossfilter.dimension(function (d) {
+//            return d.country.name;
+//        });
+//        var locations = location.group().reduceSum(function (d) {
+//            return 1;
+//        });
+//
+//        var host = surveillance.isolatesCrossfilter.dimension(function (d) {
+//            return d.host2;
+//        });
+//        var hosts = host.group(function (d) {
+//            return d;
+//        });
+//
+//        var date = surveillance.isolatesCrossfilter.dimension(function (d) {
+//            return d.date;
+//        });
+//        var years = date.group(d3.time.year);
 
         var width = 640,
             height = 320;
@@ -229,7 +263,98 @@ Surveillance = (function (hostSpecies) {
             .translate([width / 2, height * 0.55])
             .precision(.1);
 
-        ///////////// Crossfilter setup /////////////
+
+//        var minSeq = 1;
+//        var maxSeq = 10000;
+//        console.log("Min seq: " + minSeq);
+//        console.log("Max seq: " + maxSeq);
+//
+//        var colors1 = [ '#ccc' ].concat(colorbrewer.YlGn[9]);
+////        var colors1 = colorbrewer.YlGn[9];
+//
+////        var color = d3.scale.quantile()
+////            .domain([Math.log(minSeq), Math.log(maxSeq)])
+////            .range(colors1);
+//        var color = d3.scale.threshold()
+//            .domain([1,5,10,50,100,500,1000,5000,10000])
+//            .range(colors1);
+//
+//        surveillance.sequenceMap.width(width)
+//            .height(height)
+//            .transitionDuration(100)
+//            .dimension(location)
+//            .group(locations)
+//            .colors(color)
+////            .colorCalculator(function (d) {
+////                return d > 0 ? surveillance.sequenceMap.colors()(d) : colors1[0];
+////            })
+//            .overlayGeoJson(locationsJson.features, "location", function (d) {
+//                return d.properties.admin;
+//            })
+//            .projection(projection)
+//            .on("filtered", function () {
+//                dc.renderAll();
+//            })
+//            .title(function (d) {
+//                var c = countryMap[iso3Map[d.key]];
+//                if (c !== undefined) {
+//                                    return "Location: " + d.key +
+//                    "\rChicken sequences: " + c.chickenSeq +
+//                    "\rDuck sequences: " + c.duckSeq +
+//                    "\rSwine sequences: " + c.swineSeq +
+//                    "\rTotal: " + (c.chickenSeq + c.duckSeq + c.swineSeq) +
+//                    (surveillance.species === 'all' ?
+//                        "\rProportion: " + f2(c.sequenceProportion.all, 5) :
+//                        "\rProportion " + surveillance.species + ": " + f2(c.sequenceProportion[surveillance.species], 5));
+//
+//
+//                } else {
+//                    return "Location: " + d.key + "\rSequences: n/a"
+//
+//                }
+//
+//            });
+//
+//        colorlegend("#sequenceLegend", color, "quantile",
+//            {title: "Sequences sampled",
+//                isVertical: true,
+//                linearBoxes: 10,
+//                labels: [0].concat(color.domain())
+////               labels: function(d) { return f0(Math.exp(d))}
+//            });
+//
+//
+//        surveillance.hostChart.width(280)
+//            .height(200)
+//            .transitionDuration(100)
+//            .margins({top: 0, right: 20, bottom: 38, left: 20})
+//            .group(hosts)
+//            .dimension(host)
+//            .colors(d3.scale.category20())
+//            .label(function (d) {
+//                return d.value + " " + d.key;
+//            })
+//            .title(function (d) {
+//                return d.value;
+//            })
+//            .elasticX(true)
+//            .on("filtered", function () {
+//                dc.renderAll();
+//            })
+//            .xAxis().ticks(5);
+//
+//        surveillance.timeChart.width(900)
+//            .transitionDuration(100)
+//            .height(200)
+//            .margins({top: 10, right: 20, bottom: 40, left: 80})
+//            .dimension(date)
+//            .group(years)
+//            .centerBar(true)
+//            .x(d3.time.scale().domain([new Date(1970, 0, 1), new Date()]))
+//            .elasticY(true)
+//            .round(d3.time.year.round)
+//            .xUnits(d3.time.years);
+
         surveillance.countryFilter = crossfilter(countries);
 
         surveillance.allCases = surveillance.countryFilter.dimension(function (d) {
@@ -259,8 +384,6 @@ Surveillance = (function (hostSpecies) {
         var differenceGroup = differenceFromExpectation.group().reduceSum(function (d) {
             return d.score[surveillance.species];
         });
-
-        ///////////// Abundance map /////////////
 
         var minAbundance = d3.min(countries, function (d) {
             return d.abundance[surveillance.species] > 0 ? d.abundance[surveillance.species] : NaN;
@@ -331,8 +454,6 @@ Surveillance = (function (hostSpecies) {
                 labels: ["data n/a", "0", f1(1.0E-3), f1(2.0E-3), f1(5.0E-3), f1(1.0E-2), f1(2.0E-2), f1(5.0E-2), f1(1.0E-1), f1(2.0E-1), f1(5.0E-1)]
             });
 
-        ///////////// Sequencing map /////////////
-
         var minSeq = 1;
         var maxSeq = 10000;
         console.log("Min seq: " + minSeq);
@@ -392,7 +513,6 @@ Surveillance = (function (hostSpecies) {
 //               labels: function(d) { return f0(Math.exp(d))}
             });
 
-        ///////////// Undersampling map /////////////
 
         var minCoverage = d3.min(countries, function (d) {
             return d.score[surveillance.species]
